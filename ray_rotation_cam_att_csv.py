@@ -65,9 +65,9 @@ class D455YoloHumanPositioning:
         self.log_file_name = f"drone_human_log_{int(time.time())}.csv"
         
         
-        ### MODIFICATION START: Define the fixed rotation from camera to drone ###
+        #fixed rotation from camera to drone #
         # This matrix represents the static orientation of the camera relative to the drone.
-        # It is calculated once and never changes.
+
         
         # Drone coordinate system (FRD - Forward, Right, Down)
         #   X_d -> Forward
@@ -87,19 +87,19 @@ class D455YoloHumanPositioning:
         #
         # The columns of the R_cam_to_drone matrix are the camera's axes
         # expressed in the drone's coordinate system.
-        cam_x_in_drone_coords = [0, -1, 0]  # Camera X is Drone's -Y
-        cam_y_in_drone_coords = [1,  0, 0]  # Camera Y is Drone's +X
-        cam_z_in_drone_coords = [0,  0, 1]  # Camera Z is Drone's +Z
+        cam_x_in_drone_coords = [0,1,0]  # Camera X is Drone's +y
+        cam_y_in_drone_coords = [-1,0,0]  # Camera Y is Drone's -x
+        cam_z_in_drone_coords = [0,0,1]  # Camera Z is Drone's +z
         
         self.R_cam_to_drone = np.array([
-            cam_x_in_drone_coords,
-            cam_y_in_drone_coords,
-            cam_z_in_drone_coords
-        ]).T # Transpose to get the correct matrix form
+            [0, -1, 0],
+            [1,  0, 0],
+            [0,  0, 1]
+        ]) 
         logger.info(f"Using fixed camera-to-drone rotation matrix:\n{self.R_cam_to_drone}")
-        ### MODIFICATION END ###
+        
 
-    ### MODIFICATION START: Add helper for Euler to Rotation Matrix ###
+
     def euler_to_rotation_matrix(self, roll, pitch, yaw):
         """Converts Euler angles (in radians) to a 3x3 rotation matrix."""
         R_roll = np.array([[1, 0, 0], [0, np.cos(roll), -np.sin(roll)], [0, np.sin(roll), np.cos(roll)]])
@@ -109,7 +109,7 @@ class D455YoloHumanPositioning:
         # Standard aerospace sequence: Yaw, Pitch, Roll (Z-Y'-X'')
         R = R_yaw @ R_pitch @ R_roll
         return R
-    ### MODIFICATION END ###
+    
 
     def setup_realsense(self):
         try:
@@ -147,19 +147,14 @@ class D455YoloHumanPositioning:
             logger.error(f"Error in pixel to camera ray conversion: {e}")
             return None, None
     
-    ### MODIFICATION START: Simplify intersection function ###
+
     def calculate_ground_intersection_d455(self, u, v, R_cam_to_ned, altitude):
         """Calculates ground intersection using a pre-computed rotation matrix."""
         try:
             ray_camera, corrected_coords = self.pixel_to_camera_ray(u, v)
             if ray_camera is None: return None, None, None
-            
-            # The R_cam_to_ned matrix already accounts for the camera's base orientation
-            # relative to the standard camera frame (x-right, y-down, z-forward).
-            R_base_cam_to_our_cam = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
-            
             # Rotate the ray from the camera's frame to the NED frame
-            ray_ned = R_cam_to_ned @ R_base_cam_to_our_cam @ ray_camera
+            ray_ned = R_cam_to_ned @ ray_camera
             
             if abs(ray_ned[2]) < 1e-6: return None, None, None
             t = altitude / ray_ned[2]
@@ -169,7 +164,6 @@ class D455YoloHumanPositioning:
         except Exception as e:
             logger.error(f"Error in D455 ground intersection calculation: {e}")
             return None, None, None
-    ### MODIFICATION END ###
 
     def ned_to_latlon(self, lat_origin, lon_origin, north_offset, east_offset):
         R = 6378137.0
@@ -200,7 +194,7 @@ class D455YoloHumanPositioning:
         avg_lon = sum(pos[1] * w for pos, w in zip(positions, weights))
         return avg_lat, avg_lon
     
-    # <-- ADDED: Method to set up CSV logging -->
+    # CSV logging
     def setup_csv_logging(self):
         """Opens the CSV file and writes the header."""
         try:
