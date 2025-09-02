@@ -85,9 +85,9 @@ class D455YoloHumanPositioning:
             cam_z_in_drone_coords
         ]).T # Transpose to get the correct matrix form
         logger.info(f"Using fixed camera-to-drone rotation matrix:\n{self.R_cam_to_drone}")
-        ### MODIFICATION END ###
+        
 
-    ### MODIFICATION START: Add helper for Euler to Rotation Matrix ###
+    
     def euler_to_rotation_matrix(self, roll, pitch, yaw):
         """Converts Euler angles (in radians) to a 3x3 rotation matrix."""
         R_roll = np.array([[1, 0, 0], [0, np.cos(roll), -np.sin(roll)], [0, np.sin(roll), np.cos(roll)]])
@@ -97,7 +97,7 @@ class D455YoloHumanPositioning:
         # Standard aerospace sequence: Yaw, Pitch, Roll (Z-Y'-X'')
         R = R_yaw @ R_pitch @ R_roll
         return R
-    ### MODIFICATION END ###
+    
 
     def setup_realsense(self):
         try:
@@ -135,7 +135,7 @@ class D455YoloHumanPositioning:
             logger.error(f"Error in pixel to camera ray conversion: {e}")
             return None, None
     
-    ### MODIFICATION START: Simplify intersection function ###
+    
     def calculate_ground_intersection_d455(self, u, v, R_cam_to_ned, altitude):
         """Calculates ground intersection using a pre-computed rotation matrix."""
         try:
