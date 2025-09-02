@@ -15,7 +15,7 @@ import pyrealsense2 as rs
 from ultralytics import YOLO
 import csv  # <-- ADDED: Import the csv module
 
-# Configure logging
+# Logging Configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class D455YoloHumanPositioning:
         
         logger.info("Using provided camera calibration parameters")
         
-        # --- YOLO Setup ---
+        # YOLO Setup 
         logger.info("Loading YOLOv8 model...")
         self.yolo_model = YOLO('yolov8n.pt') 
         self.PERSON_CLASS_ID = 0
@@ -59,7 +59,7 @@ class D455YoloHumanPositioning:
         self.frame_count = 0
         self.processing_times = deque(maxlen=30)
         
-        # --- CSV Logging Setup --- # <-- ADDED
+        # CSV Logging Setup 
         self.csv_file = None
         self.csv_writer = None
         self.log_file_name = f"drone_human_log_{int(time.time())}.csv"
@@ -69,7 +69,7 @@ class D455YoloHumanPositioning:
         #   Y_d -> Right
         #   Z_d -> Down
         
-        # Camera coordinate system (standard for computer vision)
+        # Camera coordinate system 
         #   X_c -> To the right in the image
         #   Y_c -> Down in the image
         #   Z_c -> Looking out from the lens
@@ -95,7 +95,7 @@ class D455YoloHumanPositioning:
 
 
     def euler_to_rotation_matrix(self, roll, pitch, yaw):
-        """Converts Euler angles (in radians) to a 3x3 rotation matrix."""
+        "Converts Euler angles (in radians) to a 3x3 rotation matrix."
         R_roll = np.array([[1, 0, 0], [0, np.cos(roll), -np.sin(roll)], [0, np.sin(roll), np.cos(roll)]])
         R_pitch = np.array([[np.cos(pitch), 0, np.sin(pitch)], [0, 1, 0], [-np.sin(pitch), 0, np.cos(pitch)]])
         R_yaw = np.array([[np.cos(yaw), -np.sin(yaw), 0], [np.sin(yaw), np.cos(yaw), 0], [0, 0, 1]])
@@ -143,7 +143,7 @@ class D455YoloHumanPositioning:
     
 
     def calculate_ground_intersection_d455(self, u, v, R_cam_to_ned, altitude):
-        """Calculates ground intersection using a pre-computed rotation matrix."""
+        
         try:
             ray_camera, corrected_coords = self.pixel_to_camera_ray(u, v)
             if ray_camera is None: return None, None, None
@@ -190,12 +190,12 @@ class D455YoloHumanPositioning:
     
     # CSV logging
     def setup_csv_logging(self):
-        """Opens the CSV file and writes the header."""
+        
         try:
-            # Open in write mode ('w') with newline='' to prevent extra blank rows
+            
             self.csv_file = open(self.log_file_name, 'w', newline='')
             self.csv_writer = csv.writer(self.csv_file)
-            # Write the header row
+            # The header row
             header = [
                 'timestamp', 'drone_lat', 'drone_lon', 'drone_alt', 'drone_heading',
                 'human_id', 'human_lat_predicted', 'human_lon_predicted', 'distance_to_human_m'
@@ -237,7 +237,7 @@ class D455YoloHumanPositioning:
         # We need the inverse: a matrix from Drone frame to NED frame
         R_drone_to_ned = R_ned_to_drone.T
         
-        # 2. Combine with the fixed camera-to-drone rotation to get the final camera attitude
+        # 2. Combined with the fixed camera-to-drone rotation to get the final camera attitude
         # R_cam_to_ned = R_drone_to_ned @ R_cam_to_drone
         # It translates the ray vector from the camera's frame, to the drone's frame, to the world (NED) frame.
         R_cam_to_ned = R_drone_to_ned @ self.R_cam_to_drone
@@ -307,7 +307,7 @@ class D455YoloHumanPositioning:
             fps = 1.0 / np.mean(self.processing_times) if self.processing_times else 0
             cv2.putText(frame, f"FPS: {fps:.1f}", (10, y_offset), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        # ... rest of the info drawing ...
+        # rest of the info drawing 
 
     def validate_telemetry(self):
         if self.vehicle and self.vehicle.location.global_relative_frame.alt is not None and self.vehicle.location.global_frame.lat is not None:
