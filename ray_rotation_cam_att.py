@@ -55,9 +55,7 @@ class D455YoloHumanPositioning:
         self.frame_count = 0
         self.processing_times = deque(maxlen=30)
         
-        ### MODIFICATION START: Define the fixed rotation from camera to drone ###
         # This matrix represents the static orientation of the camera relative to the drone.
-        # It is calculated once and never changes.
         
         # Drone coordinate system (FRD - Forward, Right, Down)
         #   X_d -> Forward
@@ -69,12 +67,12 @@ class D455YoloHumanPositioning:
         #   Y_c -> Down in the image
         #   Z_c -> Looking out from the lens
         
-        # Your specific case: cam_yaw=-drone_roll, cam_roll=-drone_yaw, cam_pitch=-90deg
-        # This implies the following axis alignment:
+        # cam_yaw=-drone_roll, cam_roll=-drone_yaw, cam_pitch=-90deg
+
         # Camera's X (image right) points along the Drone's -Y (left)
         # Camera's Y (image down) points along the Drone's +X (forward)
         # Camera's Z (out of lens) points along the Drone's +Z (down)
-        #
+    
         # The columns of the R_cam_to_drone matrix are the camera's axes
         # expressed in the drone's coordinate system.
         cam_x_in_drone_coords = [0, -1, 0]  # Camera X is Drone's -Y
@@ -144,11 +142,11 @@ class D455YoloHumanPositioning:
             ray_camera, corrected_coords = self.pixel_to_camera_ray(u, v)
             if ray_camera is None: return None, None, None
             
-            # The R_cam_to_ned matrix already accounts for the camera's base orientation
-            # relative to the standard camera frame (x-right, y-down, z-forward).
+            
+            
             R_base_cam_to_our_cam = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
             
-            # Rotate the ray from the camera's frame to the NED frame
+            # Rotating the ray from the camera's frame to the NED frame
             ray_ned = R_cam_to_ned @ R_base_cam_to_our_cam @ ray_camera
             
             if abs(ray_ned[2]) < 1e-6: return None, None, None
@@ -159,7 +157,6 @@ class D455YoloHumanPositioning:
         except Exception as e:
             logger.error(f"Error in D455 ground intersection calculation: {e}")
             return None, None, None
-    ### MODIFICATION END ###
 
     def ned_to_latlon(self, lat_origin, lon_origin, north_offset, east_offset):
         R = 6378137.0
@@ -196,23 +193,22 @@ class D455YoloHumanPositioning:
         if not self.validate_telemetry():
             return frame
         
-        # Get the drone's attitude from the flight controller (in radians)
+        # Getting the drone's attitude from the flight controller (in radians)
         drone_roll = self.vehicle.attitude.roll
         drone_pitch = self.vehicle.attitude.pitch
         drone_yaw = self.vehicle.attitude.yaw
         
-        ### MODIFICATION START: Use rotation matrices for transformation ###
-        # 1. Get the drone's attitude as a rotation matrix (from NED to Drone frame)
+        # Using rotation matrices for transformation
+        # Rotation matrix (from NED to Drone frame)
         R_ned_to_drone = self.euler_to_rotation_matrix(drone_roll, drone_pitch, drone_yaw)
         
-        # We need the inverse: a matrix from Drone frame to NED frame
+        # Taking matrix for Drone frame to NED frame
         R_drone_to_ned = R_ned_to_drone.T
         
-        # 2. Combine with the fixed camera-to-drone rotation to get the final camera attitude
         # R_cam_to_ned = R_drone_to_ned @ R_cam_to_drone
-        # This translates a vector from the camera's frame, to the drone's frame, to the world (NED) frame.
+        # To translate a vector from the camera's frame, to the drone's frame, to the world (NED) frame.
         R_cam_to_ned = R_drone_to_ned @ self.R_cam_to_drone
-        ### MODIFICATION END ###
+        
 
         results = self.yolo_model(frame, verbose=False)
         detected_humans = []
@@ -226,12 +222,11 @@ class D455YoloHumanPositioning:
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     u_pixel, v_pixel = int((x1 + x2) / 2), int(y2)
                     
-                    ### MODIFICATION START: Call function with the final matrix ###
+        
                     result = self.calculate_ground_intersection_d455(
                         u_pixel, v_pixel, R_cam_to_ned, altitude
                     )
-                    ### MODIFICATION END ###
-                    
+                            
                     if result[0] is not None:
                         north_offset, east_offset, corrected_coords = result
                         target_lat, target_lon = self.ned_to_latlon(lat_origin, lon_origin, north_offset, east_offset)
@@ -265,7 +260,7 @@ class D455YoloHumanPositioning:
             fps = 1.0 / np.mean(self.processing_times) if self.processing_times else 0
             cv2.putText(frame, f"FPS: {fps:.1f}", (10, y_offset), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        # ... rest of the info drawing ...
+        
 
     def validate_telemetry(self):
         if self.vehicle and self.vehicle.location.global_relative_frame.alt is not None and self.vehicle.location.global_frame.lat is not None:
