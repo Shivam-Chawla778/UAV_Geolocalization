@@ -13,7 +13,7 @@ from collections import deque
 import threading
 import pyrealsense2 as rs
 from ultralytics import YOLO
-import csv  # <-- ADDED: Import the csv module
+import csv  
 
 # Logging Configuration
 logging.basicConfig(level=logging.INFO)
