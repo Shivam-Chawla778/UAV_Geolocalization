@@ -63,12 +63,7 @@ class D455YoloHumanPositioning:
         self.csv_file = None
         self.csv_writer = None
         self.log_file_name = f"drone_human_log_{int(time.time())}.csv"
-        
-        
-        #fixed rotation from camera to drone #
-        # This matrix represents the static orientation of the camera relative to the drone.
 
-        
         # Drone coordinate system (FRD - Forward, Right, Down)
         #   X_d -> Forward
         #   Y_d -> Right
@@ -79,17 +74,16 @@ class D455YoloHumanPositioning:
         #   Y_c -> Down in the image
         #   Z_c -> Looking out from the lens
         
-        # Your specific case: cam_yaw=-drone_roll, cam_roll=-drone_yaw, cam_pitch=-90deg
-        # This implies the following axis alignment:
+        # cam_yaw=-drone_roll, cam_roll=-drone_yaw, cam_pitch=-90deg
+    
         # Camera's X (image right) points along the Drone's -Y (left)
         # Camera's Y (image down) points along the Drone's +X (forward)
         # Camera's Z (out of lens) points along the Drone's +Z (down)
-        #
         # The columns of the R_cam_to_drone matrix are the camera's axes
         # expressed in the drone's coordinate system.
-        cam_x_in_drone_coords = [0,1,0]  # Camera X is Drone's +y
-        cam_y_in_drone_coords = [-1,0,0]  # Camera Y is Drone's -x
-        cam_z_in_drone_coords = [0,0,1]  # Camera Z is Drone's +z
+        cam_x_in_drone_coords = [0,1,0]   
+        cam_y_in_drone_coords = [-1,0,0]   
+        cam_z_in_drone_coords = [0,0,1]  
         
         self.R_cam_to_drone = np.array([
             [0, -1, 0],
@@ -213,7 +207,6 @@ class D455YoloHumanPositioning:
             logger.error(f"Failed to set up CSV logging: {e}")
             return False
 
-    # <-- ADDED: Method to log data to the CSV file -->
     def log_to_csv(self, drone_lat, drone_lon, drone_alt, drone_heading, human_id, human_lat, human_lon, distance):
         """Writes a single row of data to the CSV file."""
         if self.csv_writer:
@@ -233,12 +226,11 @@ class D455YoloHumanPositioning:
         if not self.validate_telemetry():
             return frame
         
-        # Get the drone's attitude from the flight controller (in radians)
+        # Drone's attitude from Pixhawk (Flight controller) 
         drone_roll = self.vehicle.attitude.roll
         drone_pitch = self.vehicle.attitude.pitch
         drone_yaw = self.vehicle.attitude.yaw # This is the heading
         
-        ### MODIFICATION START: Use rotation matrices for transformation ###
         # 1. Get the drone's attitude as a rotation matrix (from NED to Drone frame)
         R_ned_to_drone = self.euler_to_rotation_matrix(drone_roll, drone_pitch, drone_yaw)
         
@@ -247,9 +239,9 @@ class D455YoloHumanPositioning:
         
         # 2. Combine with the fixed camera-to-drone rotation to get the final camera attitude
         # R_cam_to_ned = R_drone_to_ned @ R_cam_to_drone
-        # This translates a vector from the camera's frame, to the drone's frame, to the world (NED) frame.
+        # It translates the ray vector from the camera's frame, to the drone's frame, to the world (NED) frame.
         R_cam_to_ned = R_drone_to_ned @ self.R_cam_to_drone
-        ### MODIFICATION END ###
+        
 
         results = self.yolo_model(frame, verbose=False)
         detected_humans = []
@@ -263,11 +255,11 @@ class D455YoloHumanPositioning:
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     u_pixel, v_pixel = int((x1 + x2) / 2), int(y2)
                     
-                    ### MODIFICATION START: Call function with the final matrix ###
+            
                     result = self.calculate_ground_intersection_d455(
                         u_pixel, v_pixel, R_cam_to_ned, altitude
                     )
-                    ### MODIFICATION END ###
+            
                     
                     if result[0] is not None:
                         north_offset, east_offset, corrected_coords = result
@@ -332,7 +324,7 @@ class D455YoloHumanPositioning:
             return False
     
     def run(self):
-        # <-- MODIFIED: Setup CSV logging on run -->
+        # Setup CSV logging on run
         if not self.connect_vehicle() or not self.setup_realsense() or not self.setup_csv_logging():
             self.cleanup()
             return
@@ -349,7 +341,6 @@ class D455YoloHumanPositioning:
             self.cleanup()
     
     def cleanup(self):
-        # <-- MODIFIED: Close the CSV file on cleanup -->
         if self.csv_file:
             self.csv_file.close()
             logger.info("CSV log file closed.")
